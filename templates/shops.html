@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Our Shops</h1>
+    <div class="row">
+        {% for seller in sellers %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ seller.shop_name }}</h5>
+                    <p class="card-text">{{ seller.description|truncate(80, '...') }}</p>
+                    <p class="text-muted">Member since: {{ seller.created_at.strftime('%B %d, %Y') }}</p>
+                    <a href="{{ url_for('shop_details', seller_id=seller.id) }}" class="btn btn-primary">View Shop</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

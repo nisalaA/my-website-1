@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.id }} - Details{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Order #{{ order.id }}</h1>
+        <a href="{{ url_for('orders') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left"></i> Back to Orders
+        </a>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Order Items</h5>
+                </div>
+                <div class="card-body">
+                    {% for item in order.items %}
+                    <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
+                        <div class="flex-shrink-0">
+                            <img src="{{ item.product.display_image }}" 
+                                 alt="{{ item.product.name }}" 
+                                 class="img-thumbnail" 
+                                 style="width: 80px; height: 80px; object-fit: cover;">
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-0">{{ item.product.name }}</h6>
+                            <p class="text-muted mb-0">
+                                Quantity: {{ item.quantity }} × ${{ "%.2f"|format(item.product.price) }}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Subtotal: ${{ "%.2f"|format(item.product.price * item.quantity) }}</strong>
+                            </p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Order Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>Order Status</h6>
+                        <span class="badge bg-{{ 'success' if order.status == 'completed' else 'warning' }}">
+                            {{ order.status.title() }}
+                        </span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Order Date</h6>
+                        <p class="mb-0">{{ order.date_ordered.strftime('%B %d, %Y') }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Total Amount</h6>
+                        <h4 class="mb-0">${{ "%.2f"|format(order.total_amount) }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

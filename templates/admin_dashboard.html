@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Admin Dashboard</h2>
+    
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Products</h5>
+                    <p class="card-text">Manage your store's products</p>
+                    <a href="{{ url_for('add_product') }}" class="btn btn-primary">Add Product</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Categories</h5>
+                    <p class="card-text">Manage product categories</p>
+                    <a href="{{ url_for('add_category') }}" class="btn btn-primary">Add Category</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Seller Applications</h5>
+                    <p class="card-text">Review seller applications</p>
+                    <a href="{{ url_for('admin_sellers') }}" class="btn btn-primary">View Applications</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Customer Support</h5>
+                    <p class="card-text">Handle customer inquiries</p>
+                    <a href="{{ url_for('admin_chat') }}" class="btn btn-primary">View Messages</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

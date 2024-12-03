@@ -1,0 +1,361 @@
+<!-- Chat Widget -->
+<div id="chat-widget" class="chat-widget">
+    <div class="chat-header">
+        <span><i class="fas fa-headset"></i> Customer Support</span>
+        <button id="minimize-chat" class="minimize-btn"><i class="fas fa-minus"></i></button>
+    </div>
+    <div class="chat-body">
+        <div id="chat-messages" class="chat-messages">
+            <!-- Messages will be populated here -->
+        </div>
+    </div>
+    <div class="chat-footer">
+        <div class="input-group">
+            <input type="text" id="chat-input" placeholder="Type your message...">
+            <button id="send-message"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+</div>
+
+<!-- Chat Button -->
+<div id="chat-button" class="chat-button">
+    <i class="fas fa-comments"></i>
+</div>
+
+<style>
+.chat-widget {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 300px;
+    height: 400px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.15);
+    display: none;
+    flex-direction: column;
+    z-index: 1000;
+    transition: all 0.3s ease;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.chat-header {
+    padding: 12px 15px;
+    background: #2979ff;
+    color: white;
+    border-radius: 15px 15px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 500;
+    font-size: 0.95em;
+}
+
+.chat-header i {
+    margin-right: 8px;
+}
+
+.minimize-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+}
+
+.minimize-btn:hover {
+    transform: scale(1.1);
+}
+
+.chat-body {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background: #f8f9fa;
+}
+
+.chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.message {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 15px;
+    position: relative;
+    animation: fadeIn 0.3s ease;
+    word-wrap: break-word;
+    font-size: 13px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.user-message {
+    background: #2979ff;
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 5px;
+}
+
+.support-message {
+    background: white;
+    color: #333;
+    align-self: flex-start;
+    border-bottom-left-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.chat-footer {
+    padding: 12px 15px;
+    border-top: 1px solid #eee;
+    background: white;
+    border-radius: 0 0 15px 15px;
+}
+
+.chat-footer .input-group {
+    display: flex;
+    gap: 8px;
+}
+
+#chat-input {
+    flex-grow: 1;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    outline: none;
+    transition: border-color 0.2s ease;
+    font-size: 13px;
+}
+
+#chat-input:focus {
+    border-color: #2979ff;
+}
+
+#send-message {
+    background: #2979ff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+#send-message:hover {
+    transform: scale(1.05);
+    background: #2962ff;
+}
+
+.chat-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background: #2979ff;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.15);
+    z-index: 1000;
+    transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+.chat-button:hover {
+    transform: scale(1.1);
+    background: #2962ff;
+}
+
+.chat-button i {
+    color: white;
+    font-size: 24px;
+}
+
+.timestamp {
+    font-size: 0.7em;
+    margin-top: 5px;
+    opacity: 0.7;
+}
+
+.user-message .timestamp {
+    color: rgba(255,255,255,0.8);
+    text-align: right;
+}
+
+.support-message .timestamp {
+    color: #666;
+}
+
+/* Scrollbar Styling */
+.chat-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.chat-body::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.chat-body::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatWidget = document.getElementById('chat-widget');
+    const chatButton = document.getElementById('chat-button');
+    const minimizeBtn = document.getElementById('minimize-chat');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const sendButton = document.getElementById('send-message');
+    let eventSource = null;
+    let lastMessageId = 0;
+    let isScrolledToBottom = true;
+
+    // Toggle chat widget
+    chatButton.addEventListener('click', () => {
+        chatWidget.style.display = 'flex';
+        chatButton.style.display = 'none';
+        loadChatHistory();
+    });
+
+    minimizeBtn.addEventListener('click', () => {
+        chatWidget.style.display = 'none';
+        chatButton.style.display = 'flex';
+        if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+        }
+    });
+
+    // Track scroll position
+    const chatBody = document.querySelector('.chat-body');
+    chatBody.addEventListener('scroll', () => {
+        const scrollPosition = chatBody.scrollHeight - chatBody.scrollTop - chatBody.clientHeight;
+        isScrolledToBottom = scrollPosition < 50;
+    });
+
+    function connectToMessageStream() {
+        if (eventSource) {
+            eventSource.close();
+        }
+
+        eventSource = new EventSource(`/api/chat/stream?last_id=${lastMessageId}`);
+        
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.messages && data.messages.length > 0) {
+                const wasScrolledToBottom = isScrolledToBottom;
+                data.messages.forEach(message => {
+                    appendMessage(message);
+                    lastMessageId = Math.max(lastMessageId, message.id);
+                });
+                if (wasScrolledToBottom) {
+                    scrollToBottom();
+                }
+            }
+        };
+
+        eventSource.onerror = function(error) {
+            console.error('EventSource failed:', error);
+            eventSource.close();
+            eventSource = null;
+            setTimeout(connectToMessageStream, 5000);
+        };
+    }
+
+    function sendMessage() {
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        fetch('/api/chat/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message: message })
+        })
+        .then(response => response.json())
+        .then(data => {
+            appendMessage(data.user_message);
+            lastMessageId = Math.max(lastMessageId, data.user_message.id);
+            chatInput.value = '';
+            scrollToBottom();
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    sendButton.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    function loadChatHistory() {
+        fetch('/api/chat/history')
+            .then(response => response.json())
+            .then(messages => {
+                chatMessages.innerHTML = '';
+                messages.forEach(message => {
+                    appendMessage(message);
+                    lastMessageId = Math.max(lastMessageId, message.id);
+                });
+                scrollToBottom();
+                connectToMessageStream();
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function appendMessage(message) {
+        const existingMessage = document.querySelector(`[data-message-id="${message.id}"]`);
+        if (existingMessage) return;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message');
+        messageDiv.classList.add(message.is_from_user ? 'user-message' : 'support-message');
+        messageDiv.setAttribute('data-message-id', message.id);
+        
+        const messageContent = document.createElement('div');
+        messageContent.textContent = message.content;
+        
+        const timestamp = document.createElement('div');
+        timestamp.classList.add('timestamp');
+        timestamp.textContent = new Date(message.timestamp).toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        
+        messageDiv.appendChild(messageContent);
+        messageDiv.appendChild(timestamp);
+        chatMessages.appendChild(messageDiv);
+    }
+
+    function scrollToBottom() {
+        const chatBody = document.querySelector('.chat-body');
+        chatBody.scrollTop = chatBody.scrollHeight;
+        isScrolledToBottom = true;
+    }
+});
+</script>

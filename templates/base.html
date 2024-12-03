@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}Online Shop{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <style>
+        body {
+            min-height: 100vh;
+            padding-top: 60px;
+        }
+        
+        .dropdown-menu {
+            right: auto;
+            left: 0;
+        }
+        
+        .card-img-top {
+            height: 200px;
+            object-fit: cover;
+        }
+        
+        .btn-cart {
+            position: relative;
+        }
+        
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            padding: 0.25em 0.6em;
+            border-radius: 50%;
+            font-size: 12px;
+        }
+
+        /* User dropdown menu alignment */
+        .user-dropdown .dropdown-menu {
+            right: 0;
+            left: auto;
+        }
+
+        /* Active dropdown item styles */
+        .dropdown-item.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        
+        .dropdown-item.active .badge {
+            background-color: white !important;
+            color: #0d6efd;
+        }
+
+        /* Search Suggestions Styles */
+        .search-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 1000;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-item:hover,
+        .suggestion-item.active {
+            background-color: #f8f9fa;
+        }
+
+        .suggestion-name {
+            font-weight: 500;
+            color: #212529;
+            margin-bottom: 2px;
+        }
+
+        .suggestion-price {
+            color: #198754;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        .suggestion-category {
+            color: #6c757d;
+            font-size: 0.85em;
+        }
+
+        .search-input-group {
+            position: relative;
+        }
+
+        .search-input-group .form-control:focus {
+            box-shadow: none;
+            border-color: #80bdff;
+        }
+        
+        @media (max-width: 767.98px) {
+            .navbar-nav {
+                padding: 1rem 0;
+            }
+            
+            .dropdown-menu {
+                position: static !important;
+                margin-top: 0;
+                background-color: transparent;
+                border: none;
+                box-shadow: none;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-md navbar-light bg-light fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-store"></i> Online Shop
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <!-- Categories Dropdown -->
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="categoriesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-tags"></i> 
+                            {% if selected_category %}
+                                {{ selected_category.name }}
+                            {% else %}
+                                All Categories
+                            {% endif %}
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="categoriesDropdown">
+                            <li>
+                                <a class="dropdown-item {% if not selected_category %}active{% endif %}" href="{{ url_for('index') }}">
+                                    All Products
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% for category in get_categories() %}
+                            <li>
+                                <a class="dropdown-item {% if selected_category and selected_category.id == category.id %}active{% endif %}" 
+                                   href="{{ url_for('index', category=category.id) }}">
+                                    {{ category.name }}
+                                    <span class="badge bg-secondary float-end">{{ category.products|length }}</span>
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                </ul>
+
+                <!-- Search Form -->
+                <form class="d-flex mx-auto col-12 col-md-6" action="{{ url_for('search') }}" method="GET">
+                    <div class="search-container w-100">
+                        <input class="form-control me-2" type="search" id="searchInput" name="q" placeholder="Search products and shops..." aria-label="Search">
+                        <div class="search-suggestions" id="searchSuggestions"></div>
+                    </div>
+                </form>
+
+                <!-- User Menu -->
+                <ul class="navbar-nav ms-auto">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('shops') }}">Shops</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('cart') }}">Cart</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('orders') }}">My Orders</a>
+                        </li>
+                        
+                        <!-- Seller Links -->
+                        {% if not current_user.is_seller() %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('become_seller') }}">Become a Seller</a>
+                        </li>
+                        {% endif %}
+                        
+                        {% if current_user.has_approved_seller_account() %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('seller_dashboard') }}">Seller Dashboard</a>
+                        </li>
+                        {% endif %}
+                        
+                        <!-- Admin Links -->
+                        {% if current_user.is_admin %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Admin
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('admin_sellers') }}">Manage Sellers</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">Admin Dashboard</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_chat') }}">Chats</a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
+                        
+                        <!-- User Account & Logout -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                {{ current_user.username }}
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('profile') }}">Profile</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('shops') }}">Shops</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('register') }}">Register</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+        
+        {% if current_user.is_authenticated and not current_user.is_admin %}
+            {% include 'chat_widget.html' %}
+        {% endif %}
+    </div>
+    
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const searchSuggestions = document.getElementById('searchSuggestions');
+        let currentSuggestions = [];
+        let selectedIndex = -1;
+
+        // Function to show suggestions
+        function showSuggestions(items) {
+            if (items.length === 0) {
+                searchSuggestions.style.display = 'none';
+                return;
+            }
+
+            let html = '';
+            items.forEach((item, index) => {
+                if (item.type === 'shop') {
+                    html += `
+                        <div class="suggestion-item" data-index="${index}" onclick="window.location.href='/shop/${item.id}'">
+                            <div class="suggestion-name">
+                                <i class="fas fa-store me-2"></i>${item.name}
+                            </div>
+                            <small class="text-muted">Shop</small>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="suggestion-item" data-index="${index}" onclick="window.location.href='/product/${item.id}'">
+                            <div class="suggestion-name">
+                                <i class="fas fa-box me-2"></i>${item.name}
+                            </div>
+                            <small class="text-muted">Product</small>
+                        </div>
+                    `;
+                }
+            });
+
+            searchSuggestions.innerHTML = html;
+            searchSuggestions.style.display = 'block';
+            currentSuggestions = items;
+            selectedIndex = -1;
+        }
+
+        // Function to handle keyboard navigation
+        function handleKeyboard(e) {
+            const items = document.querySelectorAll('.suggestion-item');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                updateSelection(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                updateSelection(items);
+            } else if (e.key === 'Enter' && selectedIndex >= 0) {
+                e.preventDefault();
+                const selectedItem = currentSuggestions[selectedIndex];
+                if (selectedItem) {
+                    window.location.href = selectedItem.type === 'shop' 
+                        ? `/shop/${selectedItem.id}` 
+                        : `/product/${selectedItem.id}`;
+                }
+            } else if (e.key === 'Escape') {
+                searchSuggestions.style.display = 'none';
+                selectedIndex = -1;
+            }
+        }
+
+        // Function to update selected item styling
+        function updateSelection(items) {
+            items.forEach((item, index) => {
+                if (index === selectedIndex) {
+                    item.classList.add('active');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
+        // Search input event listener
+        searchInput.addEventListener('input', function(e) {
+            const query = this.value.trim();
+            
+            if (query.length < 2) {
+                searchSuggestions.style.display = 'none';
+                return;
+            }
+
+            // Fetch search suggestions
+            fetch(`/search-suggestions?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(items => {
+                    showSuggestions(items);
+                })
+                .catch(error => {
+                    console.error('Error fetching suggestions:', error);
+                    searchSuggestions.style.display = 'none';
+                });
+        });
+
+        // Handle keyboard navigation
+        searchInput.addEventListener('keydown', handleKeyboard);
+
+        // Close suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !searchSuggestions.contains(e.target)) {
+                searchSuggestions.style.display = 'none';
+            }
+        });
+    });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

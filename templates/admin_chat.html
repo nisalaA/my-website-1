@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- User List -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Active Chats</h5>
+                </div>
+                <div class="list-group list-group-flush" id="user-list">
+                    <!-- Users will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0" id="chat-title">Select a user to view chat</h5>
+                </div>
+                <div class="card-body" id="chat-area" style="height: 500px; overflow-y: auto;">
+                    <div id="chat-messages">
+                        <!-- Messages will be loaded here -->
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="input-group" id="reply-form" style="display: none;">
+                        <input type="text" class="form-control" id="reply-input" placeholder="Type your reply...">
+                        <button class="btn btn-primary" id="send-reply">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.message {
+    margin-bottom: 15px;
+    max-width: 80%;
+}
+
+.user-message {
+    margin-left: auto;
+    background-color: #e9ecef;
+    padding: 10px;
+    border-radius: 15px;
+}
+
+.admin-message {
+    margin-right: auto;
+    background-color: #007bff;
+    color: white;
+    padding: 10px;
+    border-radius: 15px;
+}
+
+.timestamp {
+    font-size: 0.8em;
+    color: #6c757d;
+    margin-top: 5px;
+}
+
+.active-user {
+    background-color: #007bff !important;
+    color: white !important;
+}
+</style>
+
+<script>
+let currentUserId = null;
+let eventSource = null;
+let lastMessageId = 0;
+
+function connectToAdminStream() {
+    if (eventSource) {
+        eventSource.close();
+    }
+
+    const params = new URLSearchParams({
+        last_id: lastMessageId,
+        current_chat_user: currentUserId || ''
+    });
+
+    eventSource = new EventSource(`/api/admin/stream?${params.toString()}`);
+    
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        
+        // Handle new user messages
+        if (data.users && data.users.length > 0) {
+            updateUserList(data.users);
+            data.users.forEach(user => {
+                lastMessageId = Math.max(lastMessageId, user.message.id);
+            });
+        }
+        
+        // Handle admin responses in current chat
+        if (data.admin_messages && data.admin_messages.length > 0) {
+            data.admin_messages.forEach(message => {
+                appendMessage(message);
+                lastMessageId = Math.max(lastMessageId, message.id);
+            });
+            scrollToBottom();
+        }
+    };
+
+    eventSource.onerror = function(error) {
+        console.error('EventSource failed:', error);
+        eventSource.close();
+        eventSource = null;
+        // Try to reconnect after 5 seconds
+        setTimeout(connectToAdminStream, 5000);
+    };
+}
+
+function updateUserList(newUsers) {
+    newUsers.forEach(user => {
+        const existingUserItem = document.querySelector(`[data-user-id="${user.user_id}"]`);
+        if (!existingUserItem) {
+            const userItem = createUserListItem(user);
+            document.getElementById('user-list').appendChild(userItem);
+        }
+    });
+}
+
+function createUserListItem(user) {
+    const userItem = document.createElement('a');
+    userItem.href = '#';
+    userItem.classList.add('list-group-item', 'list-group-item-action');
+    userItem.setAttribute('data-user-id', user.user_id);
+    userItem.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <strong>${user.username}</strong>
+            <span class="badge bg-primary rounded-pill">New</span>
+        </div>
+        <small class="text-muted">${user.message.content.substring(0, 50)}...</small>
+    `;
+    
+    userItem.onclick = (e) => {
+        e.preventDefault();
+        document.querySelectorAll('.list-group-item').forEach(item => {
+            item.classList.remove('active-user');
+        });
+        userItem.classList.add('active-user');
+        loadUserChat(user.user_id, user.username);
+    };
+    
+    return userItem;
+}
+
+function loadPendingMessages() {
+    fetch('/api/admin/pending-messages')
+        .then(response => response.json())
+        .then(users => {
+            const userList = document.getElementById('user-list');
+            userList.innerHTML = '';
+            users.forEach(user => {
+                const userItem = createUserListItem(user);
+                userList.appendChild(userItem);
+                lastMessageId = Math.max(lastMessageId, user.message.id);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function loadUserChat(userId, username) {
+    currentUserId = userId;
+    document.getElementById('chat-title').textContent = `Chat with ${username}`;
+    document.getElementById('reply-form').style.display = 'flex';
+    
+    // Reconnect stream with new user ID
+    connectToAdminStream();
+    
+    fetch(`/api/admin/user-chat/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            const chatMessages = document.getElementById('chat-messages');
+            chatMessages.innerHTML = '';
+            
+            data.messages.forEach(message => {
+                appendMessage(message);
+                lastMessageId = Math.max(lastMessageId, message.id);
+            });
+            
+            scrollToBottom();
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function appendMessage(message) {
+    // Check if message already exists
+    const existingMessage = document.querySelector(`[data-message-id="${message.id}"]`);
+    if (existingMessage) return;
+
+    const chatMessages = document.getElementById('chat-messages');
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add('message');
+    messageDiv.classList.add(message.is_from_user ? 'user-message' : 'admin-message');
+    messageDiv.setAttribute('data-message-id', message.id);
+    
+    const content = document.createElement('div');
+    content.textContent = message.content;
+    
+    const timestamp = document.createElement('div');
+    timestamp.classList.add('timestamp');
+    timestamp.textContent = message.timestamp;
+    
+    messageDiv.appendChild(content);
+    messageDiv.appendChild(timestamp);
+    chatMessages.appendChild(messageDiv);
+}
+
+function sendReply() {
+    if (!currentUserId) return;
+    
+    const replyInput = document.getElementById('reply-input');
+    const reply = replyInput.value.trim();
+    
+    if (!reply) return;
+    
+    fetch('/api/admin/respond', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            user_id: currentUserId,
+            response: reply
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            replyInput.value = '';
+            appendMessage(data.message);
+            lastMessageId = Math.max(lastMessageId, data.message.id);
+            scrollToBottom();
+            loadPendingMessages();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function scrollToBottom() {
+    const chatArea = document.getElementById('chat-area');
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadPendingMessages();
+    connectToAdminStream();
+    
+    document.getElementById('send-reply').onclick = sendReply;
+    document.getElementById('reply-input').onkeypress = (e) => {
+        if (e.key === 'Enter') {
+            sendReply();
+        }
+    };
+});
+</script>
+{% endblock %}

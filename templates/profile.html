@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- User Info -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Profile Information</h5>
+                    <p><strong>Username:</strong> {{ user.username }}</p>
+                    <p><strong>Email:</strong> {{ user.email }}</p>
+                    {% if user.is_admin %}
+                    <p><span class="badge bg-primary">Admin</span></p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if seller_info %}
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">Shop Information</h5>
+                    <p><strong>Shop Name:</strong> {{ seller_info.shop_name }}</p>
+                    <p><strong>Status:</strong> 
+                        <span class="badge {% if seller_info.status == 'approved' %}bg-success{% elif seller_info.status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                            {{ seller_info.status }}
+                        </span>
+                    </p>
+                    <p><strong>Member Since:</strong> {{ seller_info.created_at.strftime('%B %d, %Y') }}</p>
+                    {% if seller_info.status == 'approved' %}
+                    <a href="{{ url_for('seller_dashboard') }}" class="btn btn-primary">Go to Dashboard</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Shipping Addresses -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Shipping Addresses</h5>
+                    {% if addresses %}
+                    <div class="list-group">
+                        {% for address in addresses %}
+                        <div class="list-group-item">
+                            <h6 class="mb-1">{{ address.name }}</h6>
+                            <p class="mb-1">{{ address.street_address }}</p>
+                            <p class="mb-1">{{ address.city }}, {{ address.state }} {{ address.postal_code }}</p>
+                            <p class="mb-1">{{ address.country }}</p>
+                            <p class="mb-1">Phone: {{ address.phone }}</p>
+                            {% if address.is_default %}
+                            <span class="badge bg-success">Default Address</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p>No shipping addresses found.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">Recent Orders</h5>
+                    {% if orders %}
+                    <div class="list-group">
+                        {% for order in orders %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">Order #{{ order.id }}</h6>
+                                <small>{{ order.date_ordered.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                            </div>
+                            <p class="mb-1">Total: ${{ "%.2f"|format(order.total_amount) }}</p>
+                            <p class="mb-1">Status: 
+                                <span class="badge {% if order.status == 'completed' %}bg-success{% elif order.status == 'cancelled' %}bg-danger{% else %}bg-warning{% endif %}">
+                                    {{ order.status }}
+                                </span>
+                            </p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p>No orders found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

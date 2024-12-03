@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>{{ seller.shop_name }}</h1>
+            <p class="lead">{{ seller.description }}</p>
+            <div class="d-flex align-items-center mb-4">
+                <p class="text-muted mb-0">Member since: {{ seller.created_at.strftime('%B %d, %Y') }}</p>
+                {% if seller.instagram_link %}
+                <a href="{{ seller.instagram_link }}" target="_blank" class="ms-3 text-decoration-none">
+                    <i class="fab fa-instagram fa-lg text-dark"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <h2>Products</h2>
+    <div class="row">
+        {% for product in products %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <a href="{{ url_for('product_detail', product_id=product.id) }}" class="text-decoration-none text-dark">
+                    {% if product.image_url %}
+                    <img src="{{ product.image_url }}" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: fill;">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <i class="fas fa-image text-muted fa-3x"></i>
+                    </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="card-text text-muted">{{ product.description[:100] }}{% if product.description|length > 100 %}...{% endif %}</p>
+                        <p class="card-text">
+                            <strong>Price:</strong> ${{ "%.2f"|format(product.price) }}<br>
+                            <strong>Stock:</strong> {{ product.stock }}
+                        </p>
+                    </div>
+                </a>
+                <div class="card-footer bg-transparent border-top-0">
+                    {% if current_user.is_authenticated %}
+                    {% if product.stock > 0 %}
+                    <form onsubmit="addToCart(event, {{ product.id }})" style="display: inline;">
+                        <div class="input-group">
+                            <input type="number" name="quantity" class="form-control" value="1" min="1" max="{{ product.stock }}">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <button class="btn btn-secondary w-100" disabled>Out of Stock</button>
+                    {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary w-100">Login to Purchase</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+async function addToCart(event, productId) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const quantityInput = form.querySelector('input[name="quantity"]');
+    const quantity = parseInt(quantityInput.value);
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    try {
+        const response = await fetch('/api/cart/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ 
+                product_id: productId, 
+                quantity: quantity,
+                csrf_token: csrfToken
+            }),
+            credentials: 'same-origin'
+        });
+
+        let data;
+        try {
+            data = await response.json();
+        } catch (e) {
+            throw new Error('Server error: Please try again');
+        }
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+            throw new Error(data.error || 'Failed to add product to cart');
+        }
+
+        // Update cart badge
+        const cartBadge = document.querySelector('.cart-badge');
+        if (cartBadge) {
+            cartBadge.textContent = data.cart_count;
+            if (data.cart_count > 0) {
+                cartBadge.style.display = 'inline-block';
+            } else {
+                cartBadge.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert(error.message);
+    }
+}
+</script>
+
+<style>
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.input-group .form-control {
+    max-width: 100px;
+}
+
+.card-footer {
+    background: none;
+    border-top: none;
+    padding-top: 0;
+}
+</style>
+{% endblock %}
